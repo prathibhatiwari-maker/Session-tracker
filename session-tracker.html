@@ -7,6 +7,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Firebase (free tier) — powers live sync between My View and Coach View -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
 <style>
   :root{
     --ink:#14171A;
@@ -19,6 +24,7 @@
     --mint-ink:#0C2E24;
     --coral:#FF6154;
     --amber:#FFB648;
+    --blue:#4A9EFF;
     --radius:14px;
   }
   *{box-sizing:border-box;}
@@ -33,10 +39,13 @@
   }
   .app{max-width:480px;margin:0 auto;}
   h1,h2,h3{font-family:'Bebas Neue',system-ui,sans-serif;letter-spacing:0.02em;margin:0;}
-  header.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;}
+  header.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;gap:10px;}
   header.top h1{font-size:30px;color:var(--text);}
-  .savebadge{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);}
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--mint);flex:none;}
+  .syncbadge{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);white-space:nowrap;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--text-muted);flex:none;}
+  .dot.synced{background:var(--mint);}
+  .dot.syncing{background:var(--amber);}
+  .dot.error{background:var(--coral);}
 
   .tabs{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:20px;}
   .tabs button{flex:1;border:none;background:transparent;color:var(--text-muted);font-family:'Inter';font-weight:600;font-size:13px;padding:10px 0;border-radius:999px;cursor:pointer;transition:background .15s,color .15s;}
@@ -46,7 +55,6 @@
   .card h2{font-size:20px;margin-bottom:4px;}
   .muted{color:var(--text-muted);font-size:13px;line-height:1.5;}
 
-  /* Stamp card */
   .stampcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
   .stamphead{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px;}
   .stampcount{font-family:'Bebas Neue';font-size:46px;line-height:1;color:var(--mint);}
@@ -76,6 +84,10 @@
   .row2{display:flex;gap:10px;}
   .row2 .field{flex:1;}
 
+  .synccode{display:flex;align-items:center;gap:8px;}
+  .synccode input{font-family:'Bebas Neue';font-size:22px;letter-spacing:.12em;text-align:center;}
+  .synccode button{flex:none;background:var(--panel-2);border:1px solid var(--line);color:var(--text-muted);border-radius:10px;padding:0 12px;font-size:12px;font-weight:600;cursor:pointer;height:44px;}
+
   button.primary{
     width:100%;background:var(--mint);color:var(--mint-ink);border:none;border-radius:10px;
     padding:13px;font-weight:700;font-size:14px;cursor:pointer;margin-top:14px;transition:transform .1s;
@@ -85,7 +97,7 @@
     width:100%;background:transparent;color:var(--text);border:1px solid var(--line);border-radius:10px;
     padding:12px;font-weight:600;font-size:13px;cursor:pointer;margin-top:10px;
   }
-  button.whatsapp{background:#25D366;color:#0B2A1B;}
+  button.whatsapp{background:#25D366;color:#0B2A1B;border-color:transparent;}
 
   .logitem{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:10px;background:var(--panel-2);}
   .logtop{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
@@ -95,13 +107,19 @@
   .pill.completed{background:rgba(53,214,164,.15);color:var(--mint);}
   .pill.absent_you{background:rgba(255,182,72,.15);color:var(--amber);}
   .pill.absent_coach{background:rgba(255,97,84,.15);color:var(--coral);}
-  .pill.rescheduled{background:rgba(74,158,255,.15);color:#4A9EFF;}
+  .pill.rescheduled{background:rgba(74,158,255,.15);color:var(--blue);}
   .lognote{font-size:13px;color:var(--text-muted);margin-top:8px;line-height:1.4;}
   .delbtn{background:none;border:none;color:var(--coral);font-size:12px;font-weight:600;cursor:pointer;padding:4px 0;margin-top:6px;}
+  .delbtn.confirmstate{font-weight:700;text-decoration:underline;}
+  .cancelbtn{background:none;border:none;color:var(--text-muted);font-size:12px;font-weight:600;cursor:pointer;padding:4px 0 0 12px;margin-top:6px;}
+  .approvebtn{background:none;border:none;color:var(--mint);font-size:12px;font-weight:700;cursor:pointer;padding:4px 0;margin-top:6px;}
+  .approvedTag{color:var(--mint);font-size:12px;font-weight:700;margin-top:8px;}
   .empty{text-align:center;padding:30px 10px;color:var(--text-muted);font-size:13px;}
 
   .banner{background:rgba(53,214,164,.12);border:1px solid rgba(53,214,164,.3);border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:16px;}
   .banner strong{color:var(--mint);}
+  .banner.warn{background:rgba(255,182,72,.1);border-color:rgba(255,182,72,.3);}
+  .banner.warn strong{color:var(--amber);}
 
   #coachView[hidden],#myView[hidden]{display:none;}
 </style>
@@ -111,7 +129,7 @@
 
   <header class="top">
     <h1>Session Tracker</h1>
-    <div class="savebadge"><span class="dot"></span> Saved on this device</div>
+    <div class="syncbadge"><span class="dot" id="syncDot"></span><span id="syncText">Checking sync…</span></div>
   </header>
 
   <div class="tabs">
@@ -121,6 +139,8 @@
 
   <!-- MY VIEW -->
   <main id="myView">
+
+    <div id="myConfigBanner"></div>
 
     <div class="stampcard">
       <div class="stamphead">
@@ -152,6 +172,13 @@
         <div class="field">
           <label for="setCoachWa">Coach's WhatsApp number (with country code)</label>
           <input type="tel" id="setCoachWa" placeholder="+91 98765 00000" />
+        </div>
+        <div class="field">
+          <label for="setSyncCode">Sync code — share this with your coach once</label>
+          <div class="synccode">
+            <input type="text" id="setSyncCode" readonly />
+            <button type="button" onclick="regenerateCode()">New code</button>
+          </div>
         </div>
         <button class="primary" onclick="saveSetup()">Save setup</button>
       </details>
@@ -189,7 +216,7 @@
         <textarea id="logNote" placeholder="How did it go? Anything the coach should know?"></textarea>
       </div>
       <button class="primary" onclick="addLog()">Save session</button>
-      <button class="secondary whatsapp" onclick="sendToCoach()">Send update to coach on WhatsApp</button>
+      <button class="secondary whatsapp" onclick="notifyCoach()">Notify coach on WhatsApp</button>
     </div>
 
     <div class="card">
@@ -201,39 +228,90 @@
 
   <!-- COACH VIEW -->
   <main id="coachView" hidden>
-    <div id="coachBanner"></div>
+    <div id="coachConfigBanner"></div>
+    <div id="coachConnect"></div>
+    <div id="coachContent" style="display:none">
+      <div id="coachBanner"></div>
 
-    <div class="stampcard">
-      <div class="stamphead">
-        <div>
-          <div class="stampcount" id="coachStampCount">0<span> / 0</span></div>
-          <div class="stamplabel" id="coachLabel">sessions completed</div>
+      <div class="stampcard">
+        <div class="stamphead">
+          <div>
+            <div class="stampcount" id="coachStampCount">0<span> / 0</span></div>
+            <div class="stamplabel">sessions completed</div>
+          </div>
         </div>
+        <div class="grid" id="coachStampGrid"></div>
       </div>
-      <div class="grid" id="coachStampGrid"></div>
-    </div>
 
-    <div class="card">
-      <h2>Session log</h2>
-      <div id="coachLogList"></div>
-    </div>
+      <div class="card">
+        <h2>Session log</h2>
+        <div id="coachLogList"></div>
+      </div>
 
-    <button class="secondary whatsapp" id="messageBackBtn" style="display:none" onclick="messageClientBack()">Message client back on WhatsApp</button>
+      <button class="secondary whatsapp" id="messageBackBtn" style="display:none" onclick="messageClientBack()">Message client back on WhatsApp</button>
+      <button class="secondary" onclick="disconnectCoach()">Disconnect / use a different code</button>
+    </div>
   </main>
 
 </div>
 
 <script>
-  // ---------- storage ----------
+  // ======================================================================
+  // FIREBASE CONFIG — paste your project's config here (see setup guide).
+  // Until this is filled in, the app still works locally but Coach View
+  // can't receive live updates and My View won't see live approvals.
+  // ======================================================================
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyA_GtsUXjKKDyaT7Mi8IpFOOA_i5QOJlhY",
+    authDomain: "realtime-session-tracker.firebaseapp.com",
+    databaseURL: "https://realtime-session-tracker-default-rtdb.firebaseio.com",
+    projectId: "realtime-session-tracker",
+  };
+
+  let fbReady = false;
+  let db = null;
+  try{
+    if(FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY"){
+      firebase.initializeApp(FIREBASE_CONFIG);
+      db = firebase.database();
+      fbReady = true;
+    }
+  }catch(e){ fbReady = false; }
+
+  // ---------- local cache (instant UI + offline fallback) ----------
   const SETUP_KEY = 'st_setup';
   const LOGS_KEY = 'st_logs';
+  const COACH_CODE_KEY = 'st_coach_code';
 
   function loadSetup(){
-    return JSON.parse(localStorage.getItem(SETUP_KEY) || '{"name":"","total":72,"yourWa":"","coachWa":""}');
+    return JSON.parse(localStorage.getItem(SETUP_KEY) || '{"name":"","total":72,"yourWa":"","coachWa":"","syncCode":""}');
   }
   function saveSetupObj(s){ localStorage.setItem(SETUP_KEY, JSON.stringify(s)); }
   function loadLogs(){ return JSON.parse(localStorage.getItem(LOGS_KEY) || '[]'); }
   function saveLogsArr(l){ localStorage.setItem(LOGS_KEY, JSON.stringify(l)); }
+
+  function setSyncBadge(state, text){
+    const dot = document.getElementById('syncDot');
+    dot.className = 'dot ' + (state || '');
+    document.getElementById('syncText').textContent = text;
+  }
+
+  function configBannerHtml(){
+    if(fbReady) return '';
+    return `<div class="banner warn"><strong>Live sync isn't set up yet.</strong> Add your Firebase config in the file to turn on automatic sync between My View and Coach View. Everything still works locally in the meantime.</div>`;
+  }
+
+  // ---------- sync code ----------
+  function generateCode(){
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
+    let code = '';
+    for(let i=0;i<6;i++) code += chars[Math.floor(Math.random()*chars.length)];
+    return code;
+  }
+  function regenerateCode(){
+    if(!confirm('Generate a new code? Your coach will need the new one to stay connected.')) return;
+    document.getElementById('setSyncCode').value = generateCode();
+  }
 
   // ---------- setup ----------
   function fillSetupForm(){
@@ -242,17 +320,21 @@
     document.getElementById('setTotal').value = s.total || 72;
     document.getElementById('setYourWa').value = s.yourWa || '';
     document.getElementById('setCoachWa').value = s.coachWa || '';
+    document.getElementById('setSyncCode').value = s.syncCode || generateCode();
   }
   function saveSetup(){
     const s = {
       name: document.getElementById('setName').value.trim(),
       total: parseInt(document.getElementById('setTotal').value || '72', 10),
       yourWa: document.getElementById('setYourWa').value.trim(),
-      coachWa: document.getElementById('setCoachWa').value.trim()
+      coachWa: document.getElementById('setCoachWa').value.trim(),
+      syncCode: document.getElementById('setSyncCode').value.trim().toUpperCase()
     };
     saveSetupObj(s);
     document.getElementById('setupDetails').open = false;
     renderMyView();
+    pushToCloud();
+    attachMyListener();
   }
 
   // ---------- logs ----------
@@ -264,7 +346,8 @@
       date,
       type: document.getElementById('logType').value,
       status: document.getElementById('logStatus').value,
-      note: document.getElementById('logNote').value.trim()
+      note: document.getElementById('logNote').value.trim(),
+      approved: false
     };
     const logs = loadLogs();
     logs.unshift(entry);
@@ -272,12 +355,51 @@
     document.getElementById('logNote').value = '';
     document.getElementById('logDate').value = '';
     renderMyView();
+    pushToCloud();
   }
-  function deleteLog(id){
-    if(!confirm('Delete this session log? This also removes its note. This can\'t be undone.')) return;
+
+  let pendingDeleteId = null;
+  function deleteLog(id, confirmStep){
+    if(!confirmStep){
+      pendingDeleteId = id;
+      renderMyView();
+      return;
+    }
+    pendingDeleteId = null;
     const logs = loadLogs().filter(l => l.id !== id);
     saveLogsArr(logs);
     renderMyView();
+    pushToCloud();
+  }
+
+  // ---------- cloud sync (My View writes; listens for coach's approvals) ----------
+  function pushToCloud(){
+    if(!fbReady) return;
+    const setup = loadSetup();
+    if(!setup.syncCode) return;
+    setSyncBadge('syncing', 'Syncing…');
+    db.ref('pairs/' + setup.syncCode).set({ setup, logs: loadLogs() })
+      .then(() => setSyncBadge('synced', 'Synced'))
+      .catch(() => setSyncBadge('error', 'Sync error'));
+  }
+
+  let myListenerRef = null;
+  function attachMyListener(){
+    if(!fbReady) { setSyncBadge('', 'Sync not set up'); return; }
+    const setup = loadSetup();
+    if(!setup.syncCode){ setSyncBadge('', 'No sync code yet'); return; }
+    if(myListenerRef) myListenerRef.off();
+    myListenerRef = db.ref('pairs/' + setup.syncCode);
+    setSyncBadge('syncing', 'Connecting…');
+    myListenerRef.on('value', snap => {
+      const val = snap.val();
+      if(val){
+        if(val.setup) saveSetupObj(val.setup);
+        if(val.logs) saveLogsArr(val.logs);
+        renderMyView();
+      }
+      setSyncBadge('synced', 'Synced live');
+    }, () => setSyncBadge('error', 'Sync error'));
   }
 
   // ---------- rendering ----------
@@ -298,7 +420,7 @@
     const label = STATUS_LABELS[status] || status;
     return `<span class="pill ${status}">${label}</span>`;
   }
-  function renderLogList(container, logs, editable){
+  function renderLogList(container, logs, mode){
     if(!logs.length){
       container.innerHTML = `<div class="empty">No sessions logged yet.</div>`;
       return;
@@ -313,7 +435,15 @@
           ${statusPill(l.status)}
         </div>
         ${l.note ? `<div class="lognote">${escapeHtml(l.note)}</div>` : ''}
-        ${editable ? `<button class="delbtn" onclick="deleteLog('${l.id}')">Delete log</button>` : ''}
+        ${l.approved ? `<div class="approvedTag">✓ Approved by coach</div>` : ''}
+        ${mode === 'edit' ? (pendingDeleteId === l.id
+            ? `<button class="delbtn confirmstate" onclick="deleteLog('${l.id}', true)">Tap again to confirm delete</button>
+               <button class="cancelbtn" onclick="pendingDeleteId=null; renderMyView();">Cancel</button>`
+            : `<button class="delbtn" onclick="deleteLog('${l.id}')">Delete log</button>`)
+          : ''}
+        ${mode === 'approve' && !l.approved
+          ? `<button class="approvebtn" onclick="approveSession('${l.id}')">Approve session</button>`
+          : ''}
       </div>
     `).join('');
   }
@@ -335,27 +465,23 @@
   }
 
   function renderMyView(){
+    document.getElementById('myConfigBanner').innerHTML = configBannerHtml();
     const setup = loadSetup();
     const logs = loadLogs();
     const completed = logs.filter(l => l.status === 'completed').length;
     document.getElementById('stampCount').innerHTML = `${completed}<span> / ${setup.total}</span>`;
     renderStampGrid(document.getElementById('stampGrid'), setup.total, completed);
-    renderLogList(document.getElementById('myLogList'), logs, true);
+    renderLogList(document.getElementById('myLogList'), logs, 'edit');
   }
 
   // ---------- WhatsApp ----------
   function digitsOnly(str){ return (str||'').replace(/[^\d]/g,''); }
-
-  function buildShareLink(){
-    const setup = loadSetup();
-    const logs = loadLogs();
-    const payload = { setup, logs };
-    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-    const base = location.origin + location.pathname;
-    return `${base}#data=${encoded}`;
+  function openWhatsApp(url){
+    const win = window.open(url, '_blank');
+    if(!win){ location.href = url; }
   }
 
-  function sendToCoach(){
+  function notifyCoach(){
     const setup = loadSetup();
     if(!setup.coachWa){
       alert("Add your coach's WhatsApp number in Your setup first.");
@@ -365,54 +491,116 @@
     const logs = loadLogs();
     const completed = logs.filter(l => l.status === 'completed').length;
     const latest = logs[0];
-    const link = buildShareLink();
     let msg = `Hi! Session update from ${setup.name || 'your client'}.\n`;
     msg += `Progress: ${completed} / ${setup.total} sessions completed.\n`;
     if(latest){
       msg += `Latest: ${formatDate(latest.date)} · ${TYPE_LABELS[latest.type] || latest.type} · ${STATUS_LABELS[latest.status] || latest.status}.\n`;
       if(latest.note) msg += `Note: ${latest.note}\n`;
     }
-    msg += `\nView full log: ${link}`;
+    msg += `\nOpen Coach View and enter sync code: ${setup.syncCode}`;
     const num = digitsOnly(setup.coachWa);
-    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
+    openWhatsApp(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`);
   }
 
   function messageClientBack(){
     const data = window.__coachData;
     if(!data || !data.setup || !data.setup.yourWa) return;
     const num = digitsOnly(data.setup.yourWa);
-    const msg = `Hi ${data.setup.name || ''}, got your session update — confirmed! Keep it up.`;
-    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
+    const msg = `Hi ${data.setup.name || ''}, got your session update — confirmed! Keep it up.`.trim();
+    openWhatsApp(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`);
+  }
+
+  function approveSession(id){
+    const setup = window.__coachData && window.__coachData.setup;
+    if(!fbReady || !window.__coachCode) return;
+    db.ref(`pairs/${window.__coachCode}/logs`).once('value').then(snap => {
+      const logs = snap.val() || [];
+      const idx = logs.findIndex(l => l.id === id);
+      if(idx === -1) return;
+      logs[idx].approved = true;
+      db.ref(`pairs/${window.__coachCode}/logs`).set(logs).then(() => {
+        if(setup && setup.yourWa){
+          const num = digitsOnly(setup.yourWa);
+          const msg = `Approved ✅ — ${formatDate(logs[idx].date)} · ${TYPE_LABELS[logs[idx].type] || logs[idx].type}. Nice work, ${setup.name || ''}!`.trim();
+          openWhatsApp(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`);
+        }
+      });
+    });
   }
 
   // ---------- coach view ----------
-  function renderCoachView(){
-    const hash = location.hash;
-    const bannerEl = document.getElementById('coachBanner');
-    const msgBtn = document.getElementById('messageBackBtn');
+  function renderCoachConnect(){
+    const el = document.getElementById('coachConnect');
+    el.innerHTML = `
+      <div class="card">
+        <h2>Connect to a client</h2>
+        <p class="muted">Enter the sync code your client shared with you.</p>
+        <div class="field">
+          <label for="coachCodeInput">Sync code</label>
+          <input type="text" id="coachCodeInput" placeholder="e.g. 7K2P9M" style="font-family:'Bebas Neue';font-size:20px;letter-spacing:.1em;text-align:center;text-transform:uppercase" />
+        </div>
+        <button class="primary" onclick="connectCoach()">Connect</button>
+      </div>`;
+  }
 
-    if(hash.startsWith('#data=')){
-      try{
-        const encoded = hash.slice(6);
-        const data = JSON.parse(decodeURIComponent(escape(atob(encoded))));
-        window.__coachData = data;
-        const { setup, logs } = data;
-        const completed = logs.filter(l => l.status === 'completed').length;
-        bannerEl.innerHTML = `<div class="banner"><strong>${escapeHtml(setup.name || 'Client')}</strong> shared this update with you. This is a snapshot from when they sent it — ask them to resend for the latest.</div>`;
-        document.getElementById('coachStampCount').innerHTML = `${completed}<span> / ${setup.total}</span>`;
-        renderStampGrid(document.getElementById('coachStampGrid'), setup.total, completed);
-        renderLogList(document.getElementById('coachLogList'), logs, false);
-        msgBtn.style.display = setup.yourWa ? 'block' : 'none';
-        return;
-      }catch(e){ /* fall through to empty state */ }
+  function connectCoach(){
+    const code = document.getElementById('coachCodeInput').value.trim().toUpperCase();
+    if(!code) return;
+    localStorage.setItem(COACH_CODE_KEY, code);
+    startCoachListener(code);
+  }
+
+  function disconnectCoach(){
+    localStorage.removeItem(COACH_CODE_KEY);
+    if(window.__coachListenerRef) window.__coachListenerRef.off();
+    window.__coachData = null;
+    window.__coachCode = null;
+    document.getElementById('coachContent').style.display = 'none';
+    renderCoachConnect();
+    document.getElementById('coachConnect').style.display = 'block';
+  }
+
+  function startCoachListener(code){
+    document.getElementById('coachConfigBanner').innerHTML = configBannerHtml();
+    if(!fbReady){
+      document.getElementById('coachConnect').innerHTML = `<div class="banner warn"><strong>Live sync isn't set up yet.</strong> Ask whoever built this page to add the Firebase config.</div>`;
+      return;
     }
+    window.__coachCode = code;
+    document.getElementById('coachConnect').style.display = 'none';
+    document.getElementById('coachContent').style.display = 'block';
+    if(window.__coachListenerRef) window.__coachListenerRef.off();
+    window.__coachListenerRef = db.ref('pairs/' + code);
+    window.__coachListenerRef.on('value', snap => {
+      const data = snap.val();
+      if(!data){
+        document.getElementById('coachBanner').innerHTML = `<div class="banner warn">No data found for code <strong>${escapeHtml(code)}</strong> yet. Ask your client to save their setup once.</div>`;
+        return;
+      }
+      window.__coachData = data;
+      const { setup, logs } = data;
+      const logsArr = logs || [];
+      const completed = logsArr.filter(l => l.status === 'completed').length;
+      document.getElementById('coachBanner').innerHTML = `<div class="banner">Connected to <strong>${escapeHtml(setup.name || 'client')}</strong> — updates here sync live.</div>`;
+      document.getElementById('coachStampCount').innerHTML = `${completed}<span> / ${setup.total}</span>`;
+      renderStampGrid(document.getElementById('coachStampGrid'), setup.total, completed);
+      renderLogList(document.getElementById('coachLogList'), logsArr, 'approve');
+      document.getElementById('messageBackBtn').style.display = setup.yourWa ? 'block' : 'none';
+    }, () => {
+      document.getElementById('coachBanner').innerHTML = `<div class="banner warn">Couldn't reach sync — check your connection and try again.</div>`;
+    });
+  }
 
-    // no shared data in the URL
-    bannerEl.innerHTML = `<div class="banner">No shared update open. Ask your client to tap <strong>"Send update to coach on WhatsApp"</strong> in My View — the link they send opens straight to this screen with their latest numbers.</div>`;
-    document.getElementById('coachStampCount').innerHTML = `0<span> / 0</span>`;
-    renderStampGrid(document.getElementById('coachStampGrid'), 0, 0);
-    renderLogList(document.getElementById('coachLogList'), [], false);
-    msgBtn.style.display = 'none';
+  function renderCoachView(){
+    const savedCode = localStorage.getItem(COACH_CODE_KEY);
+    if(savedCode){
+      startCoachListener(savedCode);
+    } else {
+      document.getElementById('coachConfigBanner').innerHTML = configBannerHtml();
+      renderCoachConnect();
+      document.getElementById('coachConnect').style.display = 'block';
+      document.getElementById('coachContent').style.display = 'none';
+    }
   }
 
   // ---------- tabs ----------
@@ -428,7 +616,7 @@
   // ---------- init ----------
   fillSetupForm();
   renderMyView();
-  if(location.hash.startsWith('#data=')) switchTab('coach');
+  attachMyListener();
 </script>
 </body>
 </html>
