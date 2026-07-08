@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Session Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14171A;
+    --panel:#1E2226;
+    --panel-2:#262B30;
+    --line:#2C3136;
+    --text:#F4F2ED;
+    --text-muted:#8B9198;
+    --mint:#35D6A4;
+    --mint-ink:#0C2E24;
+    --coral:#FF6154;
+    --amber:#FFB648;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    padding:24px 14px 60px;
+  }
+  .app{max-width:480px;margin:0 auto;}
+  h1,h2,h3{font-family:'Bebas Neue',system-ui,sans-serif;letter-spacing:0.02em;margin:0;}
+  header.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;}
+  header.top h1{font-size:30px;color:var(--text);}
+  .savebadge{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--mint);flex:none;}
+
+  .tabs{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:20px;}
+  .tabs button{flex:1;border:none;background:transparent;color:var(--text-muted);font-family:'Inter';font-weight:600;font-size:13px;padding:10px 0;border-radius:999px;cursor:pointer;transition:background .15s,color .15s;}
+  .tabs button.active{background:var(--mint);color:var(--mint-ink);}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px;}
+  .card h2{font-size:20px;margin-bottom:4px;}
+  .muted{color:var(--text-muted);font-size:13px;line-height:1.5;}
+
+  /* Stamp card */
+  .stampcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
+  .stamphead{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px;}
+  .stampcount{font-family:'Bebas Neue';font-size:46px;line-height:1;color:var(--mint);}
+  .stampcount span{font-size:20px;color:var(--text-muted);}
+  .stamplabel{font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;}
+  .grid{display:flex;flex-wrap:wrap;gap:6px;}
+  .stamp{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line);flex:none;}
+  .stamp.filled{background:var(--mint);border-color:var(--mint);position:relative;}
+  .stamp.filled::after{content:"";position:absolute;inset:3px;border-radius:50%;border:1.5px solid var(--mint-ink);opacity:.35;}
+  @media (prefers-reduced-motion:no-preference){
+    .stamp.filled{animation:pop .28s ease;}
+    @keyframes pop{0%{transform:scale(.4);}70%{transform:scale(1.15);}100%{transform:scale(1);}}
+  }
+
+  details.setup summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--text);list-style:none;display:flex;justify-content:space-between;align-items:center;}
+  details.setup summary::-webkit-details-marker{display:none;}
+  details.setup summary::after{content:"Edit";color:var(--mint);font-size:12px;font-weight:600;}
+  details.setup[open] summary::after{content:"Close";}
+  .field{margin-top:12px;}
+  label{display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;}
+  input[type=text],input[type=number],input[type=date],input[type=tel],select,textarea{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+    border-radius:10px;padding:11px 12px;font-family:'Inter';font-size:14px;outline:none;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--mint);box-shadow:0 0 0 3px rgba(53,214,164,.18);}
+  textarea{resize:vertical;min-height:64px;}
+  .row2{display:flex;gap:10px;}
+  .row2 .field{flex:1;}
+
+  button.primary{
+    width:100%;background:var(--mint);color:var(--mint-ink);border:none;border-radius:10px;
+    padding:13px;font-weight:700;font-size:14px;cursor:pointer;margin-top:14px;transition:transform .1s;
+  }
+  button.primary:active{transform:scale(.98);}
+  button.secondary{
+    width:100%;background:transparent;color:var(--text);border:1px solid var(--line);border-radius:10px;
+    padding:12px;font-weight:600;font-size:13px;cursor:pointer;margin-top:10px;
+  }
+  button.whatsapp{background:#25D366;color:#0B2A1B;}
+
+  .logitem{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:10px;background:var(--panel-2);}
+  .logtop{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .logdate{font-weight:700;font-size:14px;}
+  .logtype{color:var(--text-muted);font-size:12px;margin-top:2px;}
+  .pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}
+  .pill.completed{background:rgba(53,214,164,.15);color:var(--mint);}
+  .pill.absent_you{background:rgba(255,182,72,.15);color:var(--amber);}
+  .pill.absent_coach{background:rgba(255,97,84,.15);color:var(--coral);}
+  .pill.rescheduled{background:rgba(74,158,255,.15);color:#4A9EFF;}
+  .lognote{font-size:13px;color:var(--text-muted);margin-top:8px;line-height:1.4;}
+  .delbtn{background:none;border:none;color:var(--coral);font-size:12px;font-weight:600;cursor:pointer;padding:4px 0;margin-top:6px;}
+  .empty{text-align:center;padding:30px 10px;color:var(--text-muted);font-size:13px;}
+
+  .banner{background:rgba(53,214,164,.12);border:1px solid rgba(53,214,164,.3);border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:16px;}
+  .banner strong{color:var(--mint);}
+
+  #coachView[hidden],#myView[hidden]{display:none;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <h1>Session Tracker</h1>
+    <div class="savebadge"><span class="dot"></span> Saved on this device</div>
+  </header>
+
+  <div class="tabs">
+    <button id="tabMy" class="active" onclick="switchTab('my')">My View</button>
+    <button id="tabCoach" onclick="switchTab('coach')">Coach View</button>
+  </div>
+
+  <!-- MY VIEW -->
+  <main id="myView">
+
+    <div class="stampcard">
+      <div class="stamphead">
+        <div>
+          <div class="stampcount" id="stampCount">0<span> / 0</span></div>
+          <div class="stamplabel">sessions completed</div>
+        </div>
+      </div>
+      <div class="grid" id="stampGrid"></div>
+    </div>
+
+    <div class="card">
+      <details class="setup" id="setupDetails">
+        <summary>Your setup</summary>
+        <div class="field">
+          <label for="setName">Your name</label>
+          <input type="text" id="setName" placeholder="e.g. Priya" />
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="setTotal">Total sessions in package</label>
+            <input type="number" id="setTotal" min="1" placeholder="72" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="setYourWa">Your WhatsApp number (with country code)</label>
+          <input type="tel" id="setYourWa" placeholder="+91 98765 43210" />
+        </div>
+        <div class="field">
+          <label for="setCoachWa">Coach's WhatsApp number (with country code)</label>
+          <input type="tel" id="setCoachWa" placeholder="+91 98765 00000" />
+        </div>
+        <button class="primary" onclick="saveSetup()">Save setup</button>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>Log a session</h2>
+      <div class="field">
+        <label for="logDate">Date</label>
+        <input type="date" id="logDate" />
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label for="logType">Type</label>
+          <select id="logType">
+            <option value="push">💪 Push Day</option>
+            <option value="pull">🔙 Pull Day</option>
+            <option value="legs">🦵 Leg Day</option>
+            <option value="hiit">🔥 HIIT Day</option>
+            <option value="fullbody">🏋️ Full Body</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="logStatus">Status</label>
+          <select id="logStatus">
+            <option value="completed">🟢 Completed session</option>
+            <option value="absent_you">🟡 You were absent</option>
+            <option value="absent_coach">🔴 Coach absent</option>
+            <option value="rescheduled">🔵 Rescheduled</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="logNote">Note</label>
+        <textarea id="logNote" placeholder="How did it go? Anything the coach should know?"></textarea>
+      </div>
+      <button class="primary" onclick="addLog()">Save session</button>
+      <button class="secondary whatsapp" onclick="sendToCoach()">Send update to coach on WhatsApp</button>
+    </div>
+
+    <div class="card">
+      <h2>Session log</h2>
+      <div id="myLogList"></div>
+    </div>
+
+  </main>
+
+  <!-- COACH VIEW -->
+  <main id="coachView" hidden>
+    <div id="coachBanner"></div>
+
+    <div class="stampcard">
+      <div class="stamphead">
+        <div>
+          <div class="stampcount" id="coachStampCount">0<span> / 0</span></div>
+          <div class="stamplabel" id="coachLabel">sessions completed</div>
+        </div>
+      </div>
+      <div class="grid" id="coachStampGrid"></div>
+    </div>
+
+    <div class="card">
+      <h2>Session log</h2>
+      <div id="coachLogList"></div>
+    </div>
+
+    <button class="secondary whatsapp" id="messageBackBtn" style="display:none" onclick="messageClientBack()">Message client back on WhatsApp</button>
+  </main>
+
+</div>
+
+<script>
+  // ---------- storage ----------
+  const SETUP_KEY = 'st_setup';
+  const LOGS_KEY = 'st_logs';
+
+  function loadSetup(){
+    return JSON.parse(localStorage.getItem(SETUP_KEY) || '{"name":"","total":72,"yourWa":"","coachWa":""}');
+  }
+  function saveSetupObj(s){ localStorage.setItem(SETUP_KEY, JSON.stringify(s)); }
+  function loadLogs(){ return JSON.parse(localStorage.getItem(LOGS_KEY) || '[]'); }
+  function saveLogsArr(l){ localStorage.setItem(LOGS_KEY, JSON.stringify(l)); }
+
+  // ---------- setup ----------
+  function fillSetupForm(){
+    const s = loadSetup();
+    document.getElementById('setName').value = s.name || '';
+    document.getElementById('setTotal').value = s.total || 72;
+    document.getElementById('setYourWa').value = s.yourWa || '';
+    document.getElementById('setCoachWa').value = s.coachWa || '';
+  }
+  function saveSetup(){
+    const s = {
+      name: document.getElementById('setName').value.trim(),
+      total: parseInt(document.getElementById('setTotal').value || '72', 10),
+      yourWa: document.getElementById('setYourWa').value.trim(),
+      coachWa: document.getElementById('setCoachWa').value.trim()
+    };
+    saveSetupObj(s);
+    document.getElementById('setupDetails').open = false;
+    renderMyView();
+  }
+
+  // ---------- logs ----------
+  function addLog(){
+    const date = document.getElementById('logDate').value;
+    if(!date){ alert('Pick a date for this session.'); return; }
+    const entry = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      date,
+      type: document.getElementById('logType').value,
+      status: document.getElementById('logStatus').value,
+      note: document.getElementById('logNote').value.trim()
+    };
+    const logs = loadLogs();
+    logs.unshift(entry);
+    saveLogsArr(logs);
+    document.getElementById('logNote').value = '';
+    document.getElementById('logDate').value = '';
+    renderMyView();
+  }
+  function deleteLog(id){
+    if(!confirm('Delete this session log? This also removes its note. This can\'t be undone.')) return;
+    const logs = loadLogs().filter(l => l.id !== id);
+    saveLogsArr(logs);
+    renderMyView();
+  }
+
+  // ---------- rendering ----------
+  const TYPE_LABELS = {
+    push: '💪 Push Day',
+    pull: '🔙 Pull Day',
+    legs: '🦵 Leg Day',
+    hiit: '🔥 HIIT Day',
+    fullbody: '🏋️ Full Body'
+  };
+  const STATUS_LABELS = {
+    completed: 'Completed',
+    absent_you: 'You absent',
+    absent_coach: 'Coach absent',
+    rescheduled: 'Rescheduled'
+  };
+  function statusPill(status){
+    const label = STATUS_LABELS[status] || status;
+    return `<span class="pill ${status}">${label}</span>`;
+  }
+  function renderLogList(container, logs, editable){
+    if(!logs.length){
+      container.innerHTML = `<div class="empty">No sessions logged yet.</div>`;
+      return;
+    }
+    container.innerHTML = logs.map(l => `
+      <div class="logitem">
+        <div class="logtop">
+          <div>
+            <div class="logdate">${formatDate(l.date)}</div>
+            <div class="logtype">${escapeHtml(TYPE_LABELS[l.type] || l.type)}</div>
+          </div>
+          ${statusPill(l.status)}
+        </div>
+        ${l.note ? `<div class="lognote">${escapeHtml(l.note)}</div>` : ''}
+        ${editable ? `<button class="delbtn" onclick="deleteLog('${l.id}')">Delete log</button>` : ''}
+      </div>
+    `).join('');
+  }
+  function renderStampGrid(container, total, filled){
+    container.innerHTML = '';
+    for(let i=0;i<total;i++){
+      const d = document.createElement('div');
+      d.className = 'stamp' + (i < filled ? ' filled' : '');
+      container.appendChild(d);
+    }
+  }
+  function formatDate(iso){
+    if(!iso) return '';
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
+  }
+  function escapeHtml(str){
+    return (str||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function renderMyView(){
+    const setup = loadSetup();
+    const logs = loadLogs();
+    const completed = logs.filter(l => l.status === 'completed').length;
+    document.getElementById('stampCount').innerHTML = `${completed}<span> / ${setup.total}</span>`;
+    renderStampGrid(document.getElementById('stampGrid'), setup.total, completed);
+    renderLogList(document.getElementById('myLogList'), logs, true);
+  }
+
+  // ---------- WhatsApp ----------
+  function digitsOnly(str){ return (str||'').replace(/[^\d]/g,''); }
+
+  function buildShareLink(){
+    const setup = loadSetup();
+    const logs = loadLogs();
+    const payload = { setup, logs };
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    const base = location.origin + location.pathname;
+    return `${base}#data=${encoded}`;
+  }
+
+  function sendToCoach(){
+    const setup = loadSetup();
+    if(!setup.coachWa){
+      alert("Add your coach's WhatsApp number in Your setup first.");
+      document.getElementById('setupDetails').open = true;
+      return;
+    }
+    const logs = loadLogs();
+    const completed = logs.filter(l => l.status === 'completed').length;
+    const latest = logs[0];
+    const link = buildShareLink();
+    let msg = `Hi! Session update from ${setup.name || 'your client'}.\n`;
+    msg += `Progress: ${completed} / ${setup.total} sessions completed.\n`;
+    if(latest){
+      msg += `Latest: ${formatDate(latest.date)} · ${TYPE_LABELS[latest.type] || latest.type} · ${STATUS_LABELS[latest.status] || latest.status}.\n`;
+      if(latest.note) msg += `Note: ${latest.note}\n`;
+    }
+    msg += `\nView full log: ${link}`;
+    const num = digitsOnly(setup.coachWa);
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+
+  function messageClientBack(){
+    const data = window.__coachData;
+    if(!data || !data.setup || !data.setup.yourWa) return;
+    const num = digitsOnly(data.setup.yourWa);
+    const msg = `Hi ${data.setup.name || ''}, got your session update — confirmed! Keep it up.`;
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+
+  // ---------- coach view ----------
+  function renderCoachView(){
+    const hash = location.hash;
+    const bannerEl = document.getElementById('coachBanner');
+    const msgBtn = document.getElementById('messageBackBtn');
+
+    if(hash.startsWith('#data=')){
+      try{
+        const encoded = hash.slice(6);
+        const data = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+        window.__coachData = data;
+        const { setup, logs } = data;
+        const completed = logs.filter(l => l.status === 'completed').length;
+        bannerEl.innerHTML = `<div class="banner"><strong>${escapeHtml(setup.name || 'Client')}</strong> shared this update with you. This is a snapshot from when they sent it — ask them to resend for the latest.</div>`;
+        document.getElementById('coachStampCount').innerHTML = `${completed}<span> / ${setup.total}</span>`;
+        renderStampGrid(document.getElementById('coachStampGrid'), setup.total, completed);
+        renderLogList(document.getElementById('coachLogList'), logs, false);
+        msgBtn.style.display = setup.yourWa ? 'block' : 'none';
+        return;
+      }catch(e){ /* fall through to empty state */ }
+    }
+
+    // no shared data in the URL
+    bannerEl.innerHTML = `<div class="banner">No shared update open. Ask your client to tap <strong>"Send update to coach on WhatsApp"</strong> in My View — the link they send opens straight to this screen with their latest numbers.</div>`;
+    document.getElementById('coachStampCount').innerHTML = `0<span> / 0</span>`;
+    renderStampGrid(document.getElementById('coachStampGrid'), 0, 0);
+    renderLogList(document.getElementById('coachLogList'), [], false);
+    msgBtn.style.display = 'none';
+  }
+
+  // ---------- tabs ----------
+  function switchTab(which){
+    const my = which === 'my';
+    document.getElementById('myView').hidden = !my;
+    document.getElementById('coachView').hidden = my;
+    document.getElementById('tabMy').classList.toggle('active', my);
+    document.getElementById('tabCoach').classList.toggle('active', !my);
+    if(!my) renderCoachView();
+  }
+
+  // ---------- init ----------
+  fillSetupForm();
+  renderMyView();
+  if(location.hash.startsWith('#data=')) switchTab('coach');
+</script>
+</body>
+</html>
